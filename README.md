@@ -10,7 +10,7 @@ MAKEITQUOTE_NSEC=nsecxxxxxxxxxxxxx ./nostr-makeitquote
 
 ## Requirements
 
-* TrueType Font (default: Koruri-Bold.ttf)
+* TrueType Font (default: Koruri-Regular.ttf)
 
 ## Installation
 
