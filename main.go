@@ -33,6 +33,12 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
+const name = "makeitquote"
+
+const version = "0.0.0"
+
+var revision = "HEAD"
+
 type Profile struct {
 	Website     string `json:"website"`
 	Nip05       string `json:"nip05"`
