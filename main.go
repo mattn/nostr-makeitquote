@@ -315,22 +315,20 @@ func main() {
 			IDs:   []string{ev.ID},
 			Limit: 1,
 		})
-		if len(evs) == 0 {
-			continue
-		}
-		p := evs[0].Tags.GetLast([]string{"e"})
-		if p == nil {
-			continue
-		}
-		img, err := generate(rs, p.Value())
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		err = postEvent(rs, ev.ID, img)
-		if err != nil {
-			log.Println(err)
-			continue
+		if len(evs) > 0 {
+			p := evs[0].Tags.GetLast([]string{"e"})
+			if p != nil {
+				img, err := generate(rs, p.Value())
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				err = postEvent(rs, ev.ID, img)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+			}
 		}
 		if note, err := nip19.EncodeNote(ev.ID); err == nil {
 			ids = append(ids, note)
