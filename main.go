@@ -167,7 +167,13 @@ func makeImage(name, content, picture string) (string, error) {
 				cnv := image.NewRGBA(rect)
 				draw.ApproxBiLinear.Scale(cnv, rect, emoji, emoji.Bounds(), draw.Over, nil)
 				p := image.Pt(dr.Dot.X.Floor(), dr.Dot.Y.Floor()-dr.Face.Metrics().Ascent.Floor())
-				draw.Draw(dst, rect.Add(p), cnv, image.ZP, draw.Over)
+				fore := image.NewGray16(img.Bounds())
+				for x := 0; x < rect.Dx(); x++ {
+					for y := 0; y < rect.Dy(); y++ {
+						fore.Set(x, y, color.GrayModel.Convert(cnv.At(x, y)))
+					}
+				}
+				draw.Draw(dst, rect.Add(p), fore, image.ZP, draw.Over)
 				dr.Dot.X += fixed.I(size)
 			} else if r == 65038 {
 				continue
