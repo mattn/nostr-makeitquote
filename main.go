@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 	_ "image/jpeg"
 	"image/png"
 	"io/ioutil"
@@ -28,6 +27,7 @@ import (
 	"github.com/nbd-wtf/go-nostr/nip19"
 	"github.com/nfnt/resize"
 	"golang.org/x/exp/slices"
+	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 	_ "golang.org/x/image/webp"
@@ -137,16 +137,45 @@ func makeImage(name, content, picture string) (string, error) {
 		Face: face,
 		Dot:  fixed.Point26_6{},
 	}
+	size := dr.Face.Metrics().Ascent.Floor() + dr.Face.Metrics().Descent.Floor()
+
 	var i int
 	var line string
 	var buf bytes.Buffer
 	for i, line = range strings.Split(content, "\n") {
 		buf.WriteString(runewidth.Wrap(line, 40) + "\n")
 	}
+	dr.Dot.Y = fixed.I(100)
 	for i, line = range strings.Split(buf.String(), "\n") {
-		dr.Dot.X = (fixed.I(480))
-		dr.Dot.Y = fixed.I(100 + i*30)
-		dr.DrawString(line)
+		dr.Dot.X = fixed.I(480)
+		for _, r := range line {
+			fp := fmt.Sprintf("%s/emoji_u%.4x.png", filepath.Join(baseDir, "png"), r)
+			_, err = os.Stat(fp)
+			if err == nil {
+				fp, err := os.Open(fp)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					continue
+				}
+				emoji, _, err := image.Decode(fp)
+				fp.Close()
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					continue
+				}
+				rect := image.Rect(0, 0, size, size)
+				cnv := image.NewRGBA(rect)
+				draw.ApproxBiLinear.Scale(cnv, rect, emoji, emoji.Bounds(), draw.Over, nil)
+				p := image.Pt(dr.Dot.X.Floor(), dr.Dot.Y.Floor()-dr.Face.Metrics().Ascent.Floor())
+				draw.Draw(dst, rect.Add(p), cnv, image.ZP, draw.Over)
+				dr.Dot.X += fixed.I(size)
+			} else if r == 65038 {
+				continue
+			} else {
+				dr.DrawString(string(r))
+			}
+		}
+		dr.Dot.Y = fixed.I(100 + i*size)
 	}
 	dr.Dot.X = (fixed.I(480))
 	dr.Dot.Y = fixed.I(100 + (i+2)*30)
@@ -167,7 +196,6 @@ var (
 		"wss://relay.damus.io",
 	}
 	baseDir string
-	nsec    string
 	fontFn  string
 )
 
@@ -177,13 +205,9 @@ func init() {
 	} else {
 		baseDir = filepath.Dir(dir)
 	}
-	nsec = os.Getenv("MAKEITQUOTE_NSEC")
-	if nsec == "" {
-		log.Fatal("MAKEITQUOTE_NSEC is not set")
-	}
 }
 
-func postEvent(rs []string, id, content string) error {
+func postEvent(nsec string, rs []string, id, content string) error {
 	ev := nostr.Event{}
 
 	var sk string
@@ -287,6 +311,11 @@ func main() {
 		return
 	}
 
+	nsec := os.Getenv("MAKEITQUOTE_NSEC")
+	if nsec == "" {
+		log.Fatal("MAKEITQUOTE_NSEC is not set")
+	}
+
 	var err error
 	var ids []string
 	b, err := ioutil.ReadFile(filepath.Join(baseDir, "done.log"))
@@ -329,7 +358,7 @@ func main() {
 					log.Println(err)
 					continue
 				}
-				err = postEvent(rs, ev.ID, img)
+				err = postEvent(nsec, rs, ev.ID, img)
 				if err != nil {
 					log.Println(err)
 					continue
