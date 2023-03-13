@@ -1,5 +1,6 @@
-Koruri-*.ttf
+*.ttf
 done.log
 nostr-makeitquote
 setenv.sh
 job.sh
+png
