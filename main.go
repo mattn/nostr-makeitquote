@@ -79,23 +79,6 @@ func makeImage(name, content, picture string) (string, error) {
 	}
 	bounds := back.Bounds()
 
-	resp, err := http.Get(picture)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	b, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	img, _, err := image.Decode(bytes.NewReader(b))
-	if err != nil {
-		return "", err
-	}
-	img = resize.Resize(0, uint(bounds.Dy()), img, resize.Lanczos3)
-
 	b, err = ioutil.ReadFile(fontFn)
 	if err != nil {
 		return "", err
@@ -115,20 +98,39 @@ func makeImage(name, content, picture string) (string, error) {
 	dst := image.NewRGBA(bounds)
 	draw.Draw(dst, bounds, &image.Uniform{color.Black}, image.ZP, draw.Src)
 
-	mask := image.NewAlpha(bounds)
-	for x := 0; x < bounds.Dx(); x++ {
-		for y := 0; y < bounds.Dy(); y++ {
-			_, _, _, a := back.At(x, y).RGBA()
-			mask.SetAlpha(x, y, color.Alpha{uint8(255 - a)})
+	if picture != "" {
+		resp, err := http.Get(picture)
+		if err != nil {
+			return "", err
 		}
-	}
-	fore := image.NewGray16(img.Bounds())
-	for x := 0; x < bounds.Dx(); x++ {
-		for y := 0; y < bounds.Dy(); y++ {
-			fore.Set(x, y, color.GrayModel.Convert(img.At(x, y)))
+		defer resp.Body.Close()
+
+		b, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
 		}
+
+		img, _, err := image.Decode(bytes.NewReader(b))
+		if err != nil {
+			return "", err
+		}
+		img = resize.Resize(0, uint(bounds.Dy()), img, resize.Lanczos3)
+
+		mask := image.NewAlpha(bounds)
+		for x := 0; x < bounds.Dx(); x++ {
+			for y := 0; y < bounds.Dy(); y++ {
+				_, _, _, a := back.At(x, y).RGBA()
+				mask.SetAlpha(x, y, color.Alpha{uint8(255 - a)})
+			}
+		}
+		fore := image.NewGray16(img.Bounds())
+		for x := 0; x < bounds.Dx(); x++ {
+			for y := 0; y < bounds.Dy(); y++ {
+				fore.Set(x, y, color.GrayModel.Convert(img.At(x, y)))
+			}
+		}
+		draw.DrawMask(dst, dst.Bounds(), fore, image.ZP, mask, image.ZP, draw.Over)
 	}
-	draw.DrawMask(dst, dst.Bounds(), fore, image.ZP, mask, image.ZP, draw.Over)
 
 	face := truetype.NewFace(ft, &opt)
 	dr := &font.Drawer{
@@ -167,7 +169,7 @@ func makeImage(name, content, picture string) (string, error) {
 				cnv := image.NewRGBA(rect)
 				draw.ApproxBiLinear.Scale(cnv, rect, emoji, emoji.Bounds(), draw.Over, nil)
 				p := image.Pt(dr.Dot.X.Floor(), dr.Dot.Y.Floor()-dr.Face.Metrics().Ascent.Floor())
-				fore := image.NewGray16(img.Bounds())
+				fore := image.NewGray16(rect)
 				for x := 0; x < rect.Dx(); x++ {
 					for y := 0; y < rect.Dy(); y++ {
 						fore.Set(x, y, color.GrayModel.Convert(cnv.At(x, y)))
