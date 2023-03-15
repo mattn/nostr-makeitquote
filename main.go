@@ -150,6 +150,7 @@ func makeImage(name, content, picture string) (string, error) {
 	dr.Dot.Y = fixed.I(100)
 	for i, line = range strings.Split(buf.String(), "\n") {
 		dr.Dot.X = fixed.I(480)
+		dr.Dot.Y = fixed.I(100 + i*size)
 		for _, r := range line {
 			fp := fmt.Sprintf("%s/emoji_u%.4x.png", filepath.Join(baseDir, "png"), r)
 			_, err = os.Stat(fp)
@@ -183,7 +184,6 @@ func makeImage(name, content, picture string) (string, error) {
 				dr.DrawString(string(r))
 			}
 		}
-		dr.Dot.Y = fixed.I(100 + i*size)
 	}
 	dr.Dot.X = (fixed.I(480))
 	dr.Dot.Y = fixed.I(100 + (i+2)*30)
