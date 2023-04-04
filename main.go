@@ -43,9 +43,6 @@ var revision = "HEAD"
 var (
 	//go:embed background.png
 	backBin []byte
-
-	//go:embed Koruri-Regular.ttf
-	fontBin []byte
 )
 
 type Profile struct {
