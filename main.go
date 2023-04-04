@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"image/color"
 	_ "image/jpeg"
 	"image/png"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -26,7 +28,6 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
 	"github.com/nfnt/resize"
-	"golang.org/x/exp/slices"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
@@ -38,6 +39,14 @@ const name = "makeitquote"
 const version = "0.0.4"
 
 var revision = "HEAD"
+
+var (
+	//go:embed background.png
+	backBin []byte
+
+	//go:embed Koruri-Regular.ttf
+	fontBin []byte
+)
 
 type Profile struct {
 	Website     string `json:"website"`
@@ -72,14 +81,13 @@ func upload(buf *bytes.Buffer) (string, error) {
 }
 
 func makeImage(name, content, picture string) (string, error) {
-	b, err := ioutil.ReadFile(filepath.Join(baseDir, "background.png"))
-	back, _, err := image.Decode(bytes.NewReader(b))
+	back, _, err := image.Decode(bytes.NewReader(backBin))
 	if err != nil {
 		return "", err
 	}
 	bounds := back.Bounds()
 
-	b, err = ioutil.ReadFile(fontFn)
+	b, err := ioutil.ReadFile(fontFn)
 	if err != nil {
 		return "", err
 	}
@@ -105,7 +113,7 @@ func makeImage(name, content, picture string) (string, error) {
 		}
 		defer resp.Body.Close()
 
-		b, err = ioutil.ReadAll(resp.Body)
+		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return "", err
 		}
@@ -324,58 +332,39 @@ func main() {
 		log.Fatal("MAKEITQUOTE_NSEC is not set")
 	}
 
-	var err error
-	var ids []string
-	b, err := ioutil.ReadFile(filepath.Join(baseDir, "done.log"))
-	if err == nil {
-		ids = strings.Split(strings.TrimSpace(string(b)), "\n")
-	}
-	searchRs := []string{"wss://relay.nostr.band"}
-	evs := findEvents(searchRs, nostr.Filter{
-		Kinds:  []int{nostr.KindTextNote},
-		Search: "#makeitquote",
-		Limit:  10,
-	})
-	if len(evs) == 0 {
-		return
-	}
-	for _, ev := range evs {
-		id, err := nip19.EncodeNote(ev.ID)
+	dec := json.NewDecoder(io.TeeReader(os.Stdin, os.Stdout))
+	for {
+		var ev nostr.Event
+		err := dec.Decode(&ev)
 		if err != nil {
-			log.Println(err)
-			continue
-		}
-		if slices.Contains(ids, id) {
-			continue
+			break
 		}
 		if !strings.Contains(ev.Content, "#makeitquote") {
 			continue
 		}
-		fmt.Println(ev.ID)
 
-		evs = findEvents(rs, nostr.Filter{
+		evs := findEvents(rs, nostr.Filter{
 			Kinds: []int{nostr.KindTextNote},
 			IDs:   []string{ev.ID},
 			Limit: 1,
 		})
-		if len(evs) > 0 {
-			p := evs[0].Tags.GetLast([]string{"e"})
-			if p != nil {
-				img, err := generate(rs, p.Value())
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-				err = postEvent(nsec, rs, ev.ID, img)
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-			}
+		if len(evs) == 0 {
+			log.Println("the event not fuond")
+			continue
 		}
-		if note, err := nip19.EncodeNote(ev.ID); err == nil {
-			ids = append(ids, note)
+		p := evs[0].Tags.GetLast([]string{"e"})
+		if p == nil {
+			log.Println("parent event not fuond")
+			continue
+		}
+		img, err := generate(rs, p.Value())
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		err = postEvent(nsec, rs, ev.ID, img)
+		if err != nil {
+			log.Println(err)
 		}
 	}
-	ioutil.WriteFile(filepath.Join(baseDir, "done.log"), []byte(strings.Join(ids, "\n")), 0644)
 }

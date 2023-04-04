@@ -4,3 +4,5 @@ nostr-makeitquote
 setenv.sh
 job.sh
 png
+*.yaml
+update.sh
