@@ -248,9 +248,9 @@ func postEvent(nsec string, rs []string, id, content string) error {
 		if err != nil {
 			continue
 		}
-		status := relay.Publish(context.Background(), ev)
+		status, err := relay.Publish(context.Background(), ev)
 		relay.Close()
-		if status != nostr.PublishStatusFailed {
+		if err == nil && status != nostr.PublishStatusFailed {
 			success++
 		}
 	}
