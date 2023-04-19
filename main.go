@@ -157,7 +157,7 @@ func makeImage(name, content, picture string) (string, error) {
 		dr.Dot.X = fixed.I(480)
 		dr.Dot.Y = fixed.I(100 + i*size)
 		for _, r := range line {
-			fp := fmt.Sprintf("%s/emoji_u%.4x.png", filepath.Join(baseDir, "png"), r)
+			fp := fmt.Sprintf("%s/emoji_u%.4x.png", pngDir, r)
 			_, err = os.Stat(fp)
 			if err == nil {
 				fp, err := os.Open(fp)
@@ -209,6 +209,7 @@ var (
 		"wss://relay.damus.io",
 	}
 	baseDir string
+	pngDir  string
 	fontFn  string
 )
 
@@ -307,6 +308,7 @@ func generate(rs []string, id string) (string, error) {
 }
 
 func main() {
+	flag.StringVar(&pngDir, "f", filepath.Join(baseDir, "png"), "png dir")
 	flag.StringVar(&fontFn, "f", filepath.Join(baseDir, "Koruri-Regular.ttf"), "font filename")
 	flag.Parse()
 	if flag.NArg() > 0 {
