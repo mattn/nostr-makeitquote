@@ -308,7 +308,7 @@ func generate(rs []string, id string) (string, error) {
 }
 
 func main() {
-	flag.StringVar(&pngDir, "f", filepath.Join(baseDir, "png"), "png dir")
+	flag.StringVar(&pngDir, "d", filepath.Join(baseDir, "png"), "png dir")
 	flag.StringVar(&fontFn, "f", filepath.Join(baseDir, "Koruri-Regular.ttf"), "font filename")
 	flag.Parse()
 	if flag.NArg() > 0 {
