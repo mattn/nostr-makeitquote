@@ -264,7 +264,7 @@ func postEvent(nsec string, rs []string, id, content string) error {
 		return err
 	}
 	ev.Content = content
-	ev.CreatedAt = time.Now()
+	ev.CreatedAt = nostr.Now()
 	ev.Kind = nostr.KindTextNote
 	ev.Tags = ev.Tags.AppendUnique(nostr.Tag{"e", id, "", "reply"})
 	ev.Sign(sk)
@@ -292,8 +292,11 @@ func findEvents(rs []string, filter nostr.Filter) []*nostr.Event {
 		if err != nil {
 			continue
 		}
-		evs := relay.QuerySync(context.Background(), filter)
+		evs, err := relay.QuerySync(context.Background(), filter)
 		relay.Close()
+		if err != nil {
+			continue
+		}
 		if len(evs) > 0 {
 			return evs
 		}
