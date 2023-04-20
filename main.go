@@ -233,6 +233,8 @@ func init() {
 	} else {
 		baseDir = filepath.Dir(dir)
 	}
+	time.Local = time.FixedZone("Local", 9*60*60)
+
 }
 
 func postEvent(nsec string, rs []string, id, content string) error {
