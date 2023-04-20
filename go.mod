@@ -7,6 +7,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.14
 	github.com/nbd-wtf/go-nostr v0.15.3
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+	github.com/vincent-petithory/dataurl v1.0.0
 	golang.org/x/image v0.7.0
 )
 

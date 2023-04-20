@@ -28,6 +28,7 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
 	"github.com/nfnt/resize"
+	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
@@ -158,17 +159,25 @@ func makeImage(name, content, picture string) (string, error) {
 	draw.Draw(dst, bounds, &image.Uniform{color.Black}, image.ZP, draw.Src)
 
 	if picture != "" {
-		resp, err := http.Get(picture)
-		if err != nil {
-			return "", err
-		}
-		defer resp.Body.Close()
+		var b []byte
+		if strings.HasPrefix(picture, "data:image/") {
+			dataURL, err := dataurl.DecodeString(picture)
+			if err != nil {
+				return "", err
+			}
+			b = dataURL.Data
+		} else {
+			resp, err := http.Get(picture)
+			if err != nil {
+				return "", err
+			}
+			defer resp.Body.Close()
 
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", err
+			b, err = ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return "", err
+			}
 		}
-
 		img, _, err := image.Decode(bytes.NewReader(b))
 		if err != nil {
 			return "", err
