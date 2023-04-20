@@ -308,9 +308,17 @@ func generate(rs []string, id string) (string, error) {
 }
 
 func main() {
+	var showVersion bool
 	flag.StringVar(&pngDir, "d", filepath.Join(baseDir, "png"), "png dir")
 	flag.StringVar(&fontFn, "f", filepath.Join(baseDir, "Koruri-Regular.ttf"), "font filename")
+	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+
 	if flag.NArg() > 0 {
 		var id string
 		if _, tmp, err := nip19.Decode(flag.Arg(0)); err != nil {
