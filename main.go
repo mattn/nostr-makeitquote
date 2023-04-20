@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"embed"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -41,8 +42,25 @@ const version = "0.0.10"
 var revision = "HEAD"
 
 var (
+	rs = []string{
+		"wss://relay-jp.nostr.wirednet.jp",
+		"wss://nostr-relay.nokotaro.com/",
+		"wss://nostr.h3z.jp/",
+		"wss://nostr.wine/",
+		"wss://relay.nostr.band",
+		"wss://relay.snort.social",
+		"wss://relay.damus.io",
+		"wss://relay.nostrich.land/",
+	}
+
 	//go:embed background.png
 	backBin []byte
+
+	//go:embed png
+	pngFs embed.FS
+
+	baseDir string
+	fontFn  string
 )
 
 type Profile struct {
@@ -75,6 +93,45 @@ func upload(buf *bytes.Buffer) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func drawString(dr *font.Drawer, dst *image.RGBA, size int, s string) int {
+	x := dr.Dot.X.Round()
+	y := dr.Dot.Y.Round()
+	n := 0
+	for i, line := range strings.Split(s, "\n") {
+		dr.Dot.X = fixed.I(x)
+		dr.Dot.Y = fixed.I(y + i*size)
+		for _, r := range line {
+			fp := fmt.Sprintf("png/emoji_u%.4x.png", r)
+			b, err := pngFs.ReadFile(fp)
+			if err == nil {
+				emoji, _, err := image.Decode(bytes.NewReader(b))
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					continue
+				}
+				rect := image.Rect(0, 0, size, size)
+				cnv := image.NewRGBA(rect)
+				draw.ApproxBiLinear.Scale(cnv, rect, emoji, emoji.Bounds(), draw.Over, nil)
+				p := image.Pt(dr.Dot.X.Floor(), dr.Dot.Y.Floor()-dr.Face.Metrics().Ascent.Floor())
+				fore := image.NewGray16(rect)
+				for x := 0; x < rect.Dx(); x++ {
+					for y := 0; y < rect.Dy(); y++ {
+						fore.Set(x, y, color.GrayModel.Convert(cnv.At(x, y)))
+					}
+				}
+				draw.Draw(dst, rect.Add(p), fore, image.ZP, draw.Over)
+				dr.Dot.X += fixed.I(size)
+			} else if r == 0xfe0e || r == 0xfe0f {
+				continue
+			} else {
+				dr.DrawString(string(r))
+			}
+		}
+		n++
+	}
+	return n
 }
 
 func makeImage(name, content, picture string) (string, error) {
@@ -152,47 +209,18 @@ func makeImage(name, content, picture string) (string, error) {
 	for i, line = range strings.Split(content, "\n") {
 		buf.WriteString(runewidth.Wrap(line, 40) + "\n")
 	}
+
+	dr.Dot.X = fixed.I(480)
 	dr.Dot.Y = fixed.I(100)
-	for i, line = range strings.Split(buf.String(), "\n") {
-		dr.Dot.X = fixed.I(480)
-		dr.Dot.Y = fixed.I(100 + i*size)
-		for _, r := range line {
-			fp := fmt.Sprintf("%s/emoji_u%.4x.png", pngDir, r)
-			_, err = os.Stat(fp)
-			if err == nil {
-				fp, err := os.Open(fp)
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					continue
-				}
-				emoji, _, err := image.Decode(fp)
-				fp.Close()
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					continue
-				}
-				rect := image.Rect(0, 0, size, size)
-				cnv := image.NewRGBA(rect)
-				draw.ApproxBiLinear.Scale(cnv, rect, emoji, emoji.Bounds(), draw.Over, nil)
-				p := image.Pt(dr.Dot.X.Floor(), dr.Dot.Y.Floor()-dr.Face.Metrics().Ascent.Floor())
-				fore := image.NewGray16(rect)
-				for x := 0; x < rect.Dx(); x++ {
-					for y := 0; y < rect.Dy(); y++ {
-						fore.Set(x, y, color.GrayModel.Convert(cnv.At(x, y)))
-					}
-				}
-				draw.Draw(dst, rect.Add(p), fore, image.ZP, draw.Over)
-				dr.Dot.X += fixed.I(size)
-			} else if r == 65038 {
-				continue
-			} else {
-				dr.DrawString(string(r))
-			}
-		}
-	}
-	dr.Dot.X = (fixed.I(480))
-	dr.Dot.Y = fixed.I(100 + (i+2)*30)
-	dr.DrawString(name)
+	i = drawString(dr, dst, size, buf.String())
+
+	dr.Dot.X = fixed.I(480)
+	dr.Dot.Y = fixed.I(100 + (i+1)*30)
+	drawString(dr, dst, size, name)
+
+	dr.Dot.X = fixed.I(600)
+	dr.Dot.Y = fixed.I(dr.Dst.Bounds().Dy() - 30)
+	dr.DrawString(time.Now().Format("2006/01/02 15:04:05 JST"))
 
 	buf.Reset()
 	err = png.Encode(&buf, dst)
@@ -201,17 +229,6 @@ func makeImage(name, content, picture string) (string, error) {
 	}
 	return upload(&buf)
 }
-
-var (
-	rs = []string{
-		"wss://relay-jp.nostr.wirednet.jp",
-		"wss://relay.snort.social",
-		"wss://relay.damus.io",
-	}
-	baseDir string
-	pngDir  string
-	fontFn  string
-)
 
 func init() {
 	if dir, err := os.Executable(); err != nil {
@@ -309,7 +326,6 @@ func generate(rs []string, id string) (string, error) {
 
 func main() {
 	var showVersion bool
-	flag.StringVar(&pngDir, "d", filepath.Join(baseDir, "png"), "png dir")
 	flag.StringVar(&fontFn, "f", filepath.Join(baseDir, "Koruri-Regular.ttf"), "font filename")
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.Parse()
