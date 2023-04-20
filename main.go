@@ -36,7 +36,7 @@ import (
 
 const name = "makeitquote"
 
-const version = "0.0.12"
+const version = "0.0.13"
 
 var revision = "HEAD"
 
