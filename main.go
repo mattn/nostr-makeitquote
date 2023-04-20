@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"embed"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -56,10 +55,8 @@ var (
 	//go:embed background.png
 	backBin []byte
 
-	//go:embed png
-	pngFs embed.FS
-
 	baseDir string
+	pngDir  string
 	fontFn  string
 )
 
@@ -103,8 +100,8 @@ func drawString(dr *font.Drawer, dst *image.RGBA, size int, s string) int {
 		dr.Dot.X = fixed.I(x)
 		dr.Dot.Y = fixed.I(y + i*size)
 		for _, r := range line {
-			fp := fmt.Sprintf("png/emoji_u%.4x.png", r)
-			b, err := pngFs.ReadFile(fp)
+			fp := fmt.Sprintf("%s/emoji_u%.4x.png", pngDir, r)
+			b, err := ioutil.ReadFile(fp)
 			if err == nil {
 				emoji, _, err := image.Decode(bytes.NewReader(b))
 				if err != nil {
@@ -326,6 +323,7 @@ func generate(rs []string, id string) (string, error) {
 
 func main() {
 	var showVersion bool
+	flag.StringVar(&pngDir, "d", filepath.Join(baseDir, "png"), "png directory")
 	flag.StringVar(&fontFn, "f", filepath.Join(baseDir, "Koruri-Regular.ttf"), "font filename")
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.Parse()
