@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -14,7 +15,6 @@ import (
 	"image/color"
 	_ "image/jpeg"
 	"image/png"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -367,12 +367,13 @@ func main() {
 		log.Fatal("MAKEITQUOTE_NSEC is not set")
 	}
 
-	dec := json.NewDecoder(io.TeeReader(os.Stdin, os.Stdout))
-	for {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		text := scanner.Text()
 		var ev nostr.Event
-		err := dec.Decode(&ev)
+		err := json.Unmarshal([]byte(text), &ev)
 		if err != nil {
-			break
+			continue
 		}
 		if !strings.Contains(ev.Content, "#makeitquote") {
 			continue

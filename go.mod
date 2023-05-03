@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/mattn/go-runewidth v0.0.14
-	github.com/nbd-wtf/go-nostr v0.17.0
+	github.com/nbd-wtf/go-nostr v0.17.1
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/vincent-petithory/dataurl v1.0.0
 	golang.org/x/image v0.7.0
@@ -22,6 +22,5 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/valyala/fastjson v1.6.4 // indirect
-	golang.org/x/exp v0.0.0-20230419192730-864b3d6c5c2c // indirect
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53 // indirect
 )
