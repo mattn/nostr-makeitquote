@@ -236,7 +236,7 @@ func makeImage(name, content, picture string) (string, error) {
 	dr.Dot.Y = fixed.I(100)
 	drawString(dr, dst, size, sline)
 
-	opt := truetype.Options{
+	opt = truetype.Options{
 		Size:              25,
 		DPI:               0,
 		Hinting:           0,
