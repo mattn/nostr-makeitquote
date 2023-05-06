@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/golang/freetype/truetype"
 	"github.com/mattn/go-runewidth"
@@ -32,7 +33,10 @@ import (
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
+
 	_ "golang.org/x/image/webp"
+	//_ "github.com/chai2010/webp"
+	//_ "github.com/kolesa-team/go-webp/webp"
 )
 
 const name = "makeitquote"
@@ -101,30 +105,35 @@ func drawString(dr *font.Drawer, dst *image.RGBA, size int, s string) int {
 		dr.Dot.X = fixed.I(x)
 		dr.Dot.Y = fixed.I(y + i*size)
 		for _, r := range line {
-			fp := fmt.Sprintf("%s/emoji_u%.4x.png", pngDir, r)
-			b, err := ioutil.ReadFile(fp)
-			if err == nil {
-				emoji, _, err := image.Decode(bytes.NewReader(b))
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					continue
-				}
-				rect := image.Rect(0, 0, size, size)
-				cnv := image.NewRGBA(rect)
-				draw.ApproxBiLinear.Scale(cnv, rect, emoji, emoji.Bounds(), draw.Over, nil)
-				p := image.Pt(dr.Dot.X.Floor(), dr.Dot.Y.Floor()-dr.Face.Metrics().Ascent.Floor())
-				fore := image.NewGray16(rect)
-				for x := 0; x < rect.Dx(); x++ {
-					for y := 0; y < rect.Dy(); y++ {
-						fore.Set(x, y, color.GrayModel.Convert(cnv.At(x, y)))
-					}
-				}
-				draw.Draw(dst, rect.Add(p), fore, image.ZP, draw.Over)
-				dr.Dot.X += fixed.I(size)
-			} else if r == 0xfe0e || r == 0xfe0f {
+			if r == 0xfe0e || r == 0xfe0f {
 				continue
-			} else {
+			}
+			if !unicode.IsSymbol(r) {
 				dr.DrawString(string(r))
+			} else {
+				fp := fmt.Sprintf("%s/emoji_u%.4x.png", pngDir, r)
+				b, err := ioutil.ReadFile(fp)
+				if err == nil {
+					emoji, _, err := image.Decode(bytes.NewReader(b))
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+						continue
+					}
+					rect := image.Rect(0, 0, size, size)
+					cnv := image.NewRGBA(rect)
+					draw.ApproxBiLinear.Scale(cnv, rect, emoji, emoji.Bounds(), draw.Over, nil)
+					p := image.Pt(dr.Dot.X.Floor(), dr.Dot.Y.Floor()-dr.Face.Metrics().Ascent.Floor())
+					fore := image.NewGray16(rect)
+					for x := 0; x < rect.Dx(); x++ {
+						for y := 0; y < rect.Dy(); y++ {
+							fore.Set(x, y, color.GrayModel.Convert(cnv.At(x, y)))
+						}
+					}
+					draw.Draw(dst, rect.Add(p), fore, image.ZP, draw.Over)
+					dr.Dot.X += fixed.I(size)
+				} else {
+					dr.DrawString(string(r))
+				}
 			}
 		}
 		n++
@@ -146,14 +155,6 @@ func makeImage(name, content, picture string) (string, error) {
 	ft, err := truetype.Parse(b)
 	if err != nil {
 		return "", err
-	}
-	opt := truetype.Options{
-		Size:              25,
-		DPI:               0,
-		Hinting:           0,
-		GlyphCacheEntries: 0,
-		SubPixelsX:        0,
-		SubPixelsY:        0,
 	}
 	dst := image.NewRGBA(bounds)
 	draw.Draw(dst, bounds, &image.Uniform{color.Black}, image.ZP, draw.Src)
@@ -200,6 +201,29 @@ func makeImage(name, content, picture string) (string, error) {
 		draw.DrawMask(dst, dst.Bounds(), fore, image.ZP, mask, image.ZP, draw.Over)
 	}
 
+	opt := truetype.Options{
+		Size:              25,
+		DPI:               0,
+		Hinting:           0,
+		GlyphCacheEntries: 0,
+		SubPixelsX:        0,
+		SubPixelsY:        0,
+	}
+
+	lines := strings.Split(content, "\n")
+
+	var buf bytes.Buffer
+
+	for _, line := range lines {
+		buf.WriteString(runewidth.Wrap(line, 40) + "\n")
+	}
+
+	sline := buf.String()
+	nline := len(strings.Split(sline, "\n"))
+	if nline > 10 {
+		opt.Size -= float64(nline - 10)
+	}
+
 	face := truetype.NewFace(ft, &opt)
 	dr := &font.Drawer{
 		Dst:  dst,
@@ -208,20 +232,12 @@ func makeImage(name, content, picture string) (string, error) {
 		Dot:  fixed.Point26_6{},
 	}
 	size := dr.Face.Metrics().Ascent.Floor() + dr.Face.Metrics().Descent.Floor()
-
-	var i int
-	var line string
-	var buf bytes.Buffer
-	for i, line = range strings.Split(content, "\n") {
-		buf.WriteString(runewidth.Wrap(line, 40) + "\n")
-	}
-
 	dr.Dot.X = fixed.I(480)
 	dr.Dot.Y = fixed.I(100)
-	i = drawString(dr, dst, size, buf.String())
+	drawString(dr, dst, size, sline)
 
 	dr.Dot.X = fixed.I(480)
-	dr.Dot.Y = fixed.I(100 + (i+1)*30)
+	dr.Dot.Y = fixed.I(dr.Dst.Bounds().Dy() - 30 - size)
 	drawString(dr, dst, size, name)
 
 	dr.Dot.X = fixed.I(600)
