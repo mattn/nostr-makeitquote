@@ -236,6 +236,23 @@ func makeImage(name, content, picture string) (string, error) {
 	dr.Dot.Y = fixed.I(100)
 	drawString(dr, dst, size, sline)
 
+	opt := truetype.Options{
+		Size:              25,
+		DPI:               0,
+		Hinting:           0,
+		GlyphCacheEntries: 0,
+		SubPixelsX:        0,
+		SubPixelsY:        0,
+	}
+	face = truetype.NewFace(ft, &opt)
+	dr = &font.Drawer{
+		Dst:  dst,
+		Src:  image.White,
+		Face: face,
+		Dot:  fixed.Point26_6{},
+	}
+	size = dr.Face.Metrics().Ascent.Floor() + dr.Face.Metrics().Descent.Floor()
+
 	dr.Dot.X = fixed.I(480)
 	dr.Dot.Y = fixed.I(dr.Dst.Bounds().Dy() - 30 - size)
 	drawString(dr, dst, size, name)
