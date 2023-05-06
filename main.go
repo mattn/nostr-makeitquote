@@ -141,6 +141,36 @@ func drawString(dr *font.Drawer, dst *image.RGBA, size int, s string) int {
 	return n
 }
 
+func boxsize(s string) (int, int) {
+	lines := strings.Split(s, "\n")
+	max := 0
+	for _, line := range lines {
+		w := runewidth.StringWidth(line)
+		if w > max {
+			max = w
+		}
+	}
+	return max, len(lines)
+}
+
+func boxize(content string) (string, int, int) {
+	s := content
+	var maxw, maxh int
+	for {
+		maxw, maxh = boxsize(s)
+		if maxw <= maxh*2+4 {
+			break
+		}
+		var buf bytes.Buffer
+		lines := strings.Split(content, "\n")
+		for _, line := range lines {
+			buf.WriteString(runewidth.Wrap(line, maxw-1) + "\n")
+		}
+		s = buf.String()
+	}
+	return s, maxw, maxh
+}
+
 func makeImage(name, content, picture string) (string, error) {
 	back, _, err := image.Decode(bytes.NewReader(backBin))
 	if err != nil {
@@ -210,18 +240,10 @@ func makeImage(name, content, picture string) (string, error) {
 		SubPixelsY:        0,
 	}
 
-	lines := strings.Split(content, "\n")
-
 	var buf bytes.Buffer
-
-	for _, line := range lines {
-		buf.WriteString(runewidth.Wrap(line, 40) + "\n")
-	}
-
-	sline := buf.String()
-	nline := len(strings.Split(sline, "\n"))
-	if nline > 10 {
-		opt.Size -= float64(nline - 10)
+	sline, _, maxh := boxize(content)
+	if maxh > 13 {
+		opt.Size *= 13.0 / float64(maxh)
 	}
 
 	face := truetype.NewFace(ft, &opt)
@@ -232,7 +254,7 @@ func makeImage(name, content, picture string) (string, error) {
 		Dot:  fixed.Point26_6{},
 	}
 	size := dr.Face.Metrics().Ascent.Floor() + dr.Face.Metrics().Descent.Floor()
-	dr.Dot.X = fixed.I(480)
+	dr.Dot.X = fixed.I(520)
 	dr.Dot.Y = fixed.I(100)
 	drawString(dr, dst, size, sline)
 
