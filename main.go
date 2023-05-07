@@ -158,7 +158,7 @@ func boxize(content string) (string, int, int) {
 	var maxw, maxh int
 	for {
 		maxw, maxh = boxsize(s)
-		if maxw <= maxh*2+4 {
+		if maxw < 37 || maxw <= maxh*2+4 {
 			break
 		}
 		var buf bytes.Buffer
