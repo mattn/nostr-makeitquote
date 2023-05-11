@@ -288,7 +288,14 @@ func makeImage(name, content, picture string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return upload(&buf)
+	result, err := upload(&buf)
+	if err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(result, "http://") {
+		result = "https" + result[4:]
+	}
+	return result, nil
 }
 
 func init() {
