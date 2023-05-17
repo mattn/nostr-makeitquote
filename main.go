@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	_ "image/gif"
 	_ "image/jpeg"
 	"image/png"
 	"io/ioutil"
