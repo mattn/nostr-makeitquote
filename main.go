@@ -199,7 +199,12 @@ func makeImage(name, content, picture string) (string, error) {
 			}
 			b = dataURL.Data
 		} else {
-			resp, err := http.Get(picture)
+			req, err := http.NewRequest("GET", picture, nil)
+			if err != nil {
+				return "", err
+			}
+			req.Header.Set("User-Agent", "Golang_MakeItQuote/"+version)
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				return "", err
 			}
