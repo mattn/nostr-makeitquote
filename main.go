@@ -86,7 +86,7 @@ func isExecutable(name string) bool {
 func tempName(suffix string) string {
 	b := make([]byte, 16)
 	rand.Read(b)
-	return filepath.Join(os.TempDir(), hex.EncodeToString(b)+suffix)
+	return hex.EncodeToString(b) + suffix
 }
 func upload(buf *bytes.Buffer) (string, error) {
 	req, err := http.NewRequest(http.MethodPost, "https://void.cat/upload?cli=true", buf)
@@ -192,7 +192,7 @@ func webp2gif(b []byte) ([]byte, error) {
 	}
 	defer os.Remove(input)
 
-	output := filepath.Base(tempName(".gif"))
+	output := tempName(".gif")
 	_, err = exec.Command("webp2gif", input, output).CombinedOutput()
 	if err != nil {
 		return nil, err
