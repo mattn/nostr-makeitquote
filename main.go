@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
@@ -20,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -76,6 +78,16 @@ type Profile struct {
 	Name        string `json:"name"`
 }
 
+func isExecutable(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+func tempName(suffix string) string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return filepath.Join(os.TempDir(), hex.EncodeToString(b)+suffix)
+}
 func upload(buf *bytes.Buffer) (string, error) {
 	req, err := http.NewRequest(http.MethodPost, "https://void.cat/upload?cli=true", buf)
 	if err != nil {
@@ -172,6 +184,23 @@ func boxize(content string) (string, int, int) {
 	return s, maxw, maxh
 }
 
+func webp2gif(b []byte) ([]byte, error) {
+	input := tempName(".webp")
+	err := ioutil.WriteFile(input, b, 0644)
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(input)
+
+	output := filepath.Base(tempName(".gif"))
+	_, err = exec.Command("webp2gif", input, output).CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(output)
+	return ioutil.ReadFile(output)
+}
+
 func makeImage(name, content, picture string) (string, error) {
 	back, _, err := image.Decode(bytes.NewReader(backBin))
 	if err != nil {
@@ -213,6 +242,13 @@ func makeImage(name, content, picture string) (string, error) {
 			b, err = ioutil.ReadAll(resp.Body)
 			if err != nil {
 				return "", err
+			}
+			if strings.HasSuffix(picture, ".webp") && isExecutable("webp2gif") {
+				if tmp, err := webp2gif(b); err == nil {
+					b = tmp
+				} else {
+					return "", err
+				}
 			}
 		}
 		img, _, err := image.Decode(bytes.NewReader(b))
