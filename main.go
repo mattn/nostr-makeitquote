@@ -117,11 +117,20 @@ func drawString(dr *font.Drawer, dst *image.RGBA, size int, s string) int {
 	for i, line := range strings.Split(s, "\n") {
 		dr.Dot.X = fixed.I(x)
 		dr.Dot.Y = fixed.I(y + i*size)
-		for _, r := range line {
+		rs := []rune(line)
+		for i := 0; i < len(rs); i++ {
+			r := rs[i]
+			if r == 0xfe0e || r == 0xfe0f {
+				continue
+			}
 			if r == 0xfe0e || r == 0xfe0f || r == 0x202c || r == 0x202d {
 				continue
 			}
-			if !unicode.IsSymbol(r) {
+			if r == 0x200d {
+				i++
+				continue
+			}
+			if !unicode.IsSymbol(r) && r < 0x1f000 {
 				dr.DrawString(string(r))
 			} else {
 				fp := fmt.Sprintf("%s/emoji_u%.4x.png", pngDir, r)
