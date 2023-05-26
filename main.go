@@ -118,7 +118,7 @@ func drawString(dr *font.Drawer, dst *image.RGBA, size int, s string) int {
 		dr.Dot.X = fixed.I(x)
 		dr.Dot.Y = fixed.I(y + i*size)
 		for _, r := range line {
-			if r == 0xfe0e || r == 0xfe0f {
+			if r == 0xfe0e || r == 0xfe0f || r == 0x202c {
 				continue
 			}
 			if !unicode.IsSymbol(r) {
