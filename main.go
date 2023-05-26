@@ -440,7 +440,10 @@ func generate(rs []string, id string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := profile.DisplayName + " (" + profile.Name + ")"
+	name := profile.DisplayName
+	if profile.Name != "" {
+		name += " (" + profile.Name + ")"
+	}
 	img, err := makeImage(name, content, profile.Picture)
 	if err != nil {
 		return "", err
