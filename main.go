@@ -32,14 +32,16 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
 	"github.com/nfnt/resize"
+	"github.com/slackhq/deanimator"
 	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 
+	_ "github.com/slackhq/deanimator/gif"
+	_ "github.com/slackhq/deanimator/png"
+	_ "github.com/slackhq/deanimator/webp"
 	_ "golang.org/x/image/webp"
-	//_ "github.com/chai2010/webp"
-	//_ "github.com/kolesa-team/go-webp/webp"
 )
 
 const name = "makeitquote"
@@ -76,11 +78,6 @@ type Profile struct {
 	DisplayName string `json:"display_name"`
 	About       string `json:"about"`
 	Name        string `json:"name"`
-}
-
-func isExecutable(name string) bool {
-	_, err := exec.LookPath(name)
-	return err == nil
 }
 
 func tempName(suffix string) string {
@@ -252,14 +249,22 @@ func makeImage(name, content, picture string) (string, error) {
 			if err != nil {
 				return "", err
 			}
-			if strings.HasSuffix(picture, ".webp") && isExecutable("webp2gif") {
-				if tmp, err := webp2gif(b); err == nil {
-					b = tmp
-				} else {
-					return "", err
-				}
-			}
 		}
+		br := bytes.NewReader(b)
+		animated, _, err := deanimator.IsAnimated(br)
+		if err != nil {
+			return "", err
+		}
+		if animated {
+			br = bytes.NewReader(b)
+			w := bytes.NewBuffer([]byte{})
+			_, err = deanimator.RenderFirstFrame(br, w)
+			if err != nil {
+				return "", err
+			}
+			b = w.Bytes()
+		}
+
 		img, _, err := image.Decode(bytes.NewReader(b))
 		if err != nil {
 			return "", err
