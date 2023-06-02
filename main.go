@@ -252,10 +252,7 @@ func makeImage(name, content, picture string) (string, error) {
 		}
 		br := bytes.NewReader(b)
 		animated, _, err := deanimator.IsAnimated(br)
-		if err != nil {
-			return "", err
-		}
-		if animated {
+		if err == nil && animated {
 			br = bytes.NewReader(b)
 			w := bytes.NewBuffer([]byte{})
 			_, err = deanimator.RenderFirstFrame(br, w)
